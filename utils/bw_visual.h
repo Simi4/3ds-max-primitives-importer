@@ -4,20 +4,21 @@
 
 
 struct RenderSet {
-	std::string vres_name;
-	std::string pres_name;
-	std::string uv2_name;
+	std::string vertices_name;
+	std::string primitive_name;
+	std::string stream_name;
 };
 
 
 class BWVisual {
+	typedef std::vector<std::unique_ptr<RenderSet>> RenderSets;
+
+	boost::property_tree::ptree mTree;
+	RenderSets mRenderSets;
+
 public:
 	BWVisual();
 	~BWVisual();
 	int load(const std::string& visual_path);
-	std::vector<RenderSet>& renderSets();
-
-private:
-	boost::property_tree::ptree mTree;
-	std::vector<RenderSet> mRenderSets;
+	RenderSets& renderSets();
 };

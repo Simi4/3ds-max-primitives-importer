@@ -139,7 +139,7 @@ const TCHAR *BW_Primitives_Importer::OtherMessage2()
 
 unsigned int BW_Primitives_Importer::Version()
 {
-    return 100;
+    return 200;
 }
 
 void BW_Primitives_Importer::ShowAbout(HWND hWnd)
@@ -148,9 +148,9 @@ void BW_Primitives_Importer::ShowAbout(HWND hWnd)
 int BW_Primitives_Importer::DoImport(const TCHAR *filename, ImpInterface *i,
                                      Interface *gi, BOOL suppressPrompts)
 {
-    BWModel model;
+    BWModel model(i, gi);
 
-    if (model.load(filename, i)) {
+    if (model.load(filename)) {
         return FALSE;
     }
 

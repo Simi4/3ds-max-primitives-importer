@@ -23,7 +23,8 @@ int BWVisual::load(const std::string& visual_path)
 	}
 	catch (...) {
 		try {
-			boost::property_tree::read_xml(visual_path, mTree);
+			using namespace boost::property_tree::xml_parser;
+			read_xml(visual_path, mTree, trim_whitespace | no_comments);
 		}
 		catch (...) {
 			return 1;
@@ -33,29 +34,24 @@ int BWVisual::load(const std::string& visual_path)
 	return 0;
 }
 
-std::vector<RenderSet>& BWVisual::renderSets()
+BWVisual::RenderSets& BWVisual::renderSets()
 {
 	// get root node
 	auto root = mTree.front().second;
 
 	for (auto &v : root) {
 		if (v.first == "renderSet") {
-			RenderSet renderSet;
+			auto renderSet = std::make_unique<RenderSet>();
 
-			renderSet.vres_name = v.second.get<std::string>("geometry.vertices", "vertices");
-			renderSet.pres_name = v.second.get<std::string>("geometry.primitive", "indices");
+			renderSet->vertices_name = v.second.get<std::string>("geometry.vertices", "vertices");
+			renderSet->primitive_name = v.second.get<std::string>("geometry.primitive", "indices");
 
-			// get uv2 sream name if exist
-			auto g_stream = v.second.get_optional<std::string>("geometry.stream");
-			if (g_stream && g_stream->find("uv2") != std::string::npos) {
-				renderSet.uv2_name = g_stream.value();
+			auto geometry_stream = v.second.get_optional<std::string>("geometry.stream");
+			if (geometry_stream) {
+				renderSet->stream_name = geometry_stream.value();
 			}
 
-			boost::trim(renderSet.vres_name);
-			boost::trim(renderSet.pres_name);
-			boost::trim(renderSet.uv2_name);
-
-			mRenderSets.push_back(renderSet);
+			mRenderSets.push_back(std::move(renderSet));
 		}
 	}
 
