@@ -75,17 +75,15 @@ int BWModel::load(std::string primitives_path_str)
 		Mesh& mesh = triObject->GetMesh();
 		meshPtr = &mesh;
 
-		mesh.setNumMaps(2, TRUE);
-
 		if (pre_load_vertices(prim, renderSet->vertices_name)) {
 			return 2;
 		}
 
-		if (pre_load_stream(prim, renderSet->stream_name)) {
+		if (pre_load_indices(renderSet, prim)) {
 			return 3;
 		}
 
-		if (pre_load_indices(prim, renderSet->primitive_name)) {
+		if (pre_load_stream(renderSet, prim)) {
 			return 4;
 		}
 
@@ -200,10 +198,10 @@ static_assert(sizeof(PrimitiveGroup) == 16);
 #pragma pack(pop)
 
 
-int BWModel::pre_load_indices(BWPrimitives& prim, const std::string& pres_name)
+int BWModel::pre_load_indices(RenderSetPtr renderSet, BWPrimitives& prim)
 {
 	std::vector<char> primBuf;
-	if (prim.openSection(pres_name, primBuf)) {
+	if (prim.openSection(renderSet->primitive_name, primBuf)) {
 		return 1;
 	}
 
@@ -218,10 +216,10 @@ int BWModel::pre_load_indices(BWPrimitives& prim, const std::string& pres_name)
 	dataPtr += 4;
 
 	if (indexFormat == "list") {
-		load_indices<uint16_t>(dataPtr, nIndices, nTriangleGroups);
+		load_indices<uint16_t>(renderSet, dataPtr, nIndices, nTriangleGroups);
 	}
 	else if (indexFormat == "list32") {
-		load_indices<uint32_t>(dataPtr, nIndices, nTriangleGroups);
+		load_indices<uint32_t>(renderSet, dataPtr, nIndices, nTriangleGroups);
 	}
 	else {
 		ERROR_MSG("Unknown indexFormat");
@@ -233,7 +231,7 @@ int BWModel::pre_load_indices(BWPrimitives& prim, const std::string& pres_name)
 
 
 template <typename T>
-void BWModel::load_indices(const char* buf,	uint32_t nIndices, uint32_t nTriangleGroups)
+void BWModel::load_indices(RenderSetPtr renderSet, const char* buf,	uint32_t nIndices, uint32_t nTriangleGroups)
 {
 	Mesh& mesh = *meshPtr;
 
@@ -243,13 +241,10 @@ void BWModel::load_indices(const char* buf,	uint32_t nIndices, uint32_t nTriangl
 		buf + nIndices * sizeof(T));
 
 	int n = nIndices / 3;
-	int nm = mesh.getNumMaps();
 
 	mesh.setNumFaces(n);
-	mesh.setNumTVFaces(nm);
-
-	for (int j = 1; j <= nm; ++j)
-		mesh.setNumMapFaces(j, n, TRUE);
+	mesh.setNumMapFaces(1, n, TRUE);
+	TVFace *tvFace = mesh.mapFaces(1);
 
 	MultiMtl *mtl = NewDefaultMultiMtl();
 	mtl->SetNumSubMtls(nTriangleGroups);
@@ -259,7 +254,7 @@ void BWModel::load_indices(const char* buf,	uint32_t nIndices, uint32_t nTriangl
 
 	for (int matId = 0; matId < nTriangleGroups; matId++) {
 		StdMat2 *submtl = NewDefaultStdMat();
-		submtl->SetName("debug");
+		submtl->SetName(renderSet->materials.at(matId).c_str());
 		mtl->SetSubMtlAndName(matId, submtl, submtl->GetName());
 
 		int begP = pg[matId].startIndex / 3;
@@ -274,12 +269,8 @@ void BWModel::load_indices(const char* buf,	uint32_t nIndices, uint32_t nTriangl
 			f.Show();
 			f.setEdgeVisFlags(EDGE_VIS, EDGE_VIS, EDGE_VIS);
 			f.setMatID(matId);
-
-			for (int j = 1; j <= nm; ++j) {
-				if (TVFace *tvFace = mesh.mapFaces(j)) {
-					tvFace[i].setTVerts(c, b, a);
-				}
-			}
+			
+			tvFace[i].setTVerts(c, b, a);
 		}
 	}
 }
@@ -288,20 +279,18 @@ void BWModel::load_indices(const char* buf,	uint32_t nIndices, uint32_t nTriangl
 static void load_uv2(const char*, Mesh&);
 static void load_colour(const char*, Mesh&);
 
-int BWModel::pre_load_stream(BWPrimitives& prim, const std::string& stream_name)
+int BWModel::pre_load_stream(RenderSetPtr renderSet, BWPrimitives& prim)
 {
-	if (!stream_name.length()) {
+	if (!renderSet->stream_name.length()) {
 		return 0;
 	}
 
 	std::vector<char> streamBuf;
-	if (prim.openSection(stream_name, streamBuf)) {
+	if (prim.openSection(renderSet->stream_name, streamBuf)) {
 		return 1;
 	}
 
 	Mesh& mesh = *meshPtr;
-
-	mesh.setNumMaps(3, TRUE);
 
 	char *dataPtr = streamBuf.data();
 	std::string streamType(dataPtr, strnlen(dataPtr, 64));
@@ -346,14 +335,20 @@ static void load_uv2(const char* buf, Mesh& mesh)
 
 	mesh.setMapSupport(2, TRUE);
 	mesh.setNumMapVerts(2, mesh.getNumVerts());
+	mesh.setNumMapFaces(2, mesh.getNumFaces());
+	TVFace *tvFace = mesh.mapFaces(2);
 
 	for (int i = 0; i < mesh.getNumVerts(); ++i) {
 		mesh.setMapVert(2, i, UVVert(data[i].x, 1.0f - data[i].y, 0.0f));
 	}
+
+	for (int i = 0; i < mesh.getNumFaces(); ++i) {
+		tvFace[i].t[0] = mesh.faces[i].v[0];
+		tvFace[i].t[1] = mesh.faces[i].v[1];
+		tvFace[i].t[2] = mesh.faces[i].v[2];
+	}
 }
 
-
-/* Colour: untested */
 
 #pragma pack(push, 1)
 class Colour {
@@ -373,8 +368,15 @@ static void load_colour(const char* buf, Mesh& mesh)
 	const Colour *colours = reinterpret_cast<const Colour*>(buf);
 
 	mesh.setNumVertCol(mesh.getNumVerts());
+	mesh.setNumVCFaces(mesh.getNumFaces());
 
 	for (int i = 0; i < mesh.getNumVerts(); ++i) {
 		mesh.vertCol[i] = colours[i].get();
+	}
+
+	for (int i = 0; i < mesh.getNumFaces(); ++i) {
+		mesh.vcFace[i].t[0] = mesh.faces[i].v[0];
+		mesh.vcFace[i].t[1] = mesh.faces[i].v[1];
+		mesh.vcFace[i].t[2] = mesh.faces[i].v[2];
 	}
 }

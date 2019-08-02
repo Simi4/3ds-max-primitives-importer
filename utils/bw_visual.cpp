@@ -34,24 +34,29 @@ int BWVisual::load(const std::string& visual_path)
 	return 0;
 }
 
-BWVisual::RenderSets& BWVisual::renderSets()
+std::vector<RenderSetPtr>& BWVisual::renderSets()
 {
 	// get root node
 	auto root = mTree.front().second;
 
 	for (auto &v : root) {
 		if (v.first == "renderSet") {
-			auto renderSet = std::make_unique<RenderSet>();
+			auto renderSet = std::make_shared<RenderSet>();
 
-			renderSet->vertices_name = v.second.get<std::string>("geometry.vertices", "vertices");
-			renderSet->primitive_name = v.second.get<std::string>("geometry.primitive", "indices");
+			auto geometry = v.second.get_child("geometry");
+			renderSet->vertices_name = geometry.get<std::string>("vertices", "vertices");
+			renderSet->primitive_name = geometry.get<std::string>("primitive", "indices");
+			renderSet->stream_name = geometry.get<std::string>("stream", "");
 
-			auto geometry_stream = v.second.get_optional<std::string>("geometry.stream");
-			if (geometry_stream) {
-				renderSet->stream_name = geometry_stream.value();
+			for (auto &pg : geometry) {
+				if (pg.first == "primitiveGroup") {
+					int pgId = pg.second.get_value<int>();
+					std::string matName = pg.second.get<std::string>("material.identifier", "unnamed_material");
+					renderSet->materials[pgId] = matName;
+				}
 			}
 
-			mRenderSets.push_back(std::move(renderSet));
+			mRenderSets.push_back(renderSet);
 		}
 	}
 
