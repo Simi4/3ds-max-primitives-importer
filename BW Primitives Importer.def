@@ -6,5 +6,6 @@ EXPORTS
    LibVersion           @4       PRIVATE
    LibInitialize        @6       PRIVATE
    LibShutdown          @7       PRIVATE
+   CanAutoDefer         @8       PRIVATE
 SECTIONS
    .data READ WRITE

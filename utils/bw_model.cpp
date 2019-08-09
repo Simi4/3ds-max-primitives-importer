@@ -89,7 +89,6 @@ int BWModel::load(std::string primitives_path_str)
 
 		mesh.buildNormals();
 
-		/*
 		{
 			// weld vertices
 			MeshDelta tmd(mesh);
@@ -99,7 +98,6 @@ int BWModel::load(std::string primitives_path_str)
 			tmd.WeldByThreshold(mesh, vTempSel, 0.0f);
 			tmd.Apply(mesh);
 		}
-		*/
 
 		i->AddNodeToScene(node);
 		//node->GetINode()->EvalWorldState(0);

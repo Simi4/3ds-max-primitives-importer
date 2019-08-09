@@ -48,6 +48,11 @@ __declspec( dllexport ) int LibShutdown(void)
     return TRUE; // TODO: Perform un-initialization here.
 }
 
+__declspec( dllexport ) ULONG CanAutoDefer()
+{
+   return FALSE;
+}
+
 TCHAR *GetString(int id)
 {
     static TCHAR buf[256];
