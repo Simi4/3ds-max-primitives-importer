@@ -18,20 +18,20 @@ BWModel::~BWModel()
 }
 
 
-int BWModel::load(std::string primitives_path_str)
+int BWModel::load(MaxSDK::Util::Path max_primitives_path)
 {
+	max_primitives_path.ConvertToLowerCase();
+
 	namespace fs = std::filesystem;
-
-	boost::algorithm::to_lower(primitives_path_str); // case insensitive
-	auto primitives_path = fs::path(primitives_path_str);
-
-	if (!primitives_path.has_extension()) {
-		ERROR_MSG("Primitives file has no extension");
-		return 1;
-	}
+	auto primitives_path = fs::path(max_primitives_path.GetCStr());
 
 	if (!fs::exists(primitives_path)) {
 		ERROR_MSG("Primitives file does not exist");
+		return 1;
+	}
+
+	if (!primitives_path.has_extension()) {
+		ERROR_MSG("Primitives file has no extension");
 		return 2;
 	}
 
@@ -59,7 +59,7 @@ int BWModel::load(std::string primitives_path_str)
 		}
 	}
 
-	BWPrimitives prim(primitives_path_str);
+	BWPrimitives prim(primitives_path.string());
 
 	for (const auto& renderSet : visual->renderSets()) {
 		node = i->CreateNode();

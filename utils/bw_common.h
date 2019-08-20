@@ -1,7 +1,8 @@
 #pragma once
-#include <string>
-#include <string_view>
 #include <tchar.h>
+#include <string>
+#include <vector>
+#include <map>
 
 void InfoMsg(const TCHAR* msg);
 void ErrorMsg(const TCHAR* msg);

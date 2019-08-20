@@ -2,6 +2,7 @@
 #include "bw_common.h"
 #include <fstream>
 #include <vector>
+#include <Path.h>
 
 
 class BWPrimitives {

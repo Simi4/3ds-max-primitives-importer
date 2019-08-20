@@ -1,6 +1,7 @@
 #pragma once
 #include "bw_common.h"
-#include "Max.h"
+#include <Max.h>
+#include <Path.h>
 
 
 class RenderSet;
@@ -29,5 +30,5 @@ public:
 	BWModel(ImpInterface *i, Interface *gi);
 	~BWModel();
 
-	int load(std::string primitives_path);
+	int load(MaxSDK::Util::Path max_primitives_path);
 };
