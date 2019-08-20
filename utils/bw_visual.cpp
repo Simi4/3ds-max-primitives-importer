@@ -1,6 +1,5 @@
 #include "bw_visual.h"
 #include "bwxml-lib/BWReader.h"
-#include <boost/foreach.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -12,6 +11,56 @@ BWVisual::BWVisual()
 
 BWVisual::~BWVisual()
 {
+}
+
+
+static void parse_nodes(boost::property_tree::ptree& tree, NodePtr& parent)
+{
+	if (!tree.count("identifier") || !tree.count("transform")) {
+		return;
+	}
+
+	NodePtr newNode = std::make_shared<Node>();
+
+	newNode->identifier = tree.get<std::string>("identifier");
+	auto row0 = tree.get<std::string>("transform.row0");
+	auto row1 = tree.get<std::string>("transform.row1");
+	auto row2 = tree.get<std::string>("transform.row2");
+	auto row3 = tree.get<std::string>("transform.row3");
+
+	std::vector<std::string> splitted;
+	Point3 p3;
+
+	// todo: need to refactor
+	boost::split(splitted, row0, boost::is_any_of("\t "));
+	p3.Set(std::stod(splitted[0]), std::stod(splitted[1]), std::stod(splitted[2]));
+	newNode->transform.SetRow(0, p3);
+
+	boost::split(splitted, row1, boost::is_any_of("\t "));
+	p3.Set(std::stod(splitted[0]), std::stod(splitted[1]), std::stod(splitted[2]));
+	newNode->transform.SetRow(1, p3);
+
+	boost::split(splitted, row2, boost::is_any_of("\t "));
+	p3.Set(std::stod(splitted[0]), std::stod(splitted[1]), std::stod(splitted[2]));
+	newNode->transform.SetRow(2, p3);
+
+	boost::split(splitted, row3, boost::is_any_of("\t "));
+	p3.Set(std::stod(splitted[0]), std::stod(splitted[1]), std::stod(splitted[2]));
+	newNode->transform.SetRow(3, p3);
+
+	if (!parent) {
+		// for Scene Root node
+		parent = newNode;
+	}
+	else {
+		parent->nodes[newNode->identifier] = newNode;
+	}
+
+	for (auto& child : tree) {
+		if (child.first == "node") {
+			parse_nodes(child.second, newNode);
+		}
+	}
 }
 
 
@@ -31,16 +80,14 @@ int BWVisual::load(const std::string& visual_path)
 		}
 	}
 
-	return 0;
-}
-
-std::vector<RenderSetPtr>& BWVisual::renderSets()
-{
 	// get root node
 	auto root = mTree.front().second;
 
 	for (auto &v : root) {
-		if (v.first == "renderSet") {
+		if (v.first == "node") {
+			parse_nodes(v.second, mSceneRoot);
+		}
+		else if (v.first == "renderSet") {
 			auto renderSet = std::make_shared<RenderSet>();
 
 			auto geometry = v.second.get_child("geometry");
@@ -60,5 +107,5 @@ std::vector<RenderSetPtr>& BWVisual::renderSets()
 		}
 	}
 
-	return mRenderSets;
+	return 0;
 }

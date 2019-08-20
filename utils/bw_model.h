@@ -3,7 +3,7 @@
 #include "Max.h"
 
 
-struct RenderSet;
+class RenderSet;
 typedef std::shared_ptr<RenderSet> RenderSetPtr;
 
 class BWPrimitives;
