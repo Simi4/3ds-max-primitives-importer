@@ -106,13 +106,13 @@ int BWVisual::load(const std::string& visual_path)
 		renderSet->vertices_name = geometry.get<std::string>("vertices", "vertices");
 		renderSet->primitive_name = geometry.get<std::string>("primitive", "indices");
 
-		// todo: separate streams for uv2/colour
-		renderSet->stream_name = geometry.get<std::string>("stream", "");
-
-		for (auto &pg : geometry) {
-			if (pg.first == "primitiveGroup") {
-				int pgId = pg.second.get_value<int>();
-				auto matName = pg.second.get<std::string>("material.identifier", "unnamed_material");
+		for (const auto &[tag, value] : geometry) {
+			if (tag == "stream") {
+				renderSet->stream_names.push_back(value.get_value<std::string>());
+			}
+			else if (tag == "primitiveGroup") {
+				int pgId = value.get_value<int>();
+				auto matName = value.get<std::string>("material.identifier", "unnamed_material");
 				renderSet->materials[pgId] = matName;
 			}
 		}

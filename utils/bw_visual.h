@@ -13,7 +13,7 @@ public:
 
 	std::string vertices_name;
 	std::string primitive_name;
-	std::string stream_name;
+	std::vector<std::string> stream_names;
 	std::map<int, std::string> materials;
 };
 

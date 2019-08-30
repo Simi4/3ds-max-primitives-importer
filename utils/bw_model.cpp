@@ -83,9 +83,23 @@ int BWModel::load(MaxSDK::Util::Path max_primitives_path)
 			return 3;
 		}
 
-		if (pre_load_stream(renderSet, prim)) {
-			return 4;
+		for (const auto& name : renderSet->stream_names) {
+			if (boost::ends_with(name, "uv2")) {
+				if (pre_load_uv2(prim, name)) {
+					return 4;
+				}
+			}
+			else if (boost::ends_with(name, "colour")) {
+				if (pre_load_colour(prim, name)) {
+					return 5;
+				}
+			}
+			else {
+				assert(false);
+				return 6;
+			}
 		}
+
 
 		mesh.buildNormals();
 
@@ -275,16 +289,11 @@ void BWModel::load_indices(RenderSetPtr renderSet, const char* buf,	uint32_t nIn
 
 
 static void load_uv2(const char*, Mesh&);
-static void load_colour(const char*, Mesh&);
 
-int BWModel::pre_load_stream(RenderSetPtr renderSet, BWPrimitives& prim)
+int BWModel::pre_load_uv2(BWPrimitives& prim, const std::string& uv2_name)
 {
-	if (!renderSet->stream_name.length()) {
-		return 0;
-	}
-
 	std::vector<char> streamBuf;
-	if (prim.openSection(renderSet->stream_name, streamBuf)) {
+	if (prim.openSection(uv2_name, streamBuf)) {
 		return 1;
 	}
 
@@ -301,7 +310,6 @@ int BWModel::pre_load_stream(RenderSetPtr renderSet, BWPrimitives& prim)
 		dataPtr += 64;
 	}
 
-	std::string subname;
 	if (streamType == "uv2") {
 		uint32_t uv2_vcount = *reinterpret_cast<uint32_t*>(dataPtr);
 		dataPtr += 4;
@@ -310,17 +318,9 @@ int BWModel::pre_load_stream(RenderSetPtr renderSet, BWPrimitives& prim)
 
 		load_uv2(dataPtr, mesh);
 	}
-	else if (streamType == "colour") {
-		uint32_t colour_vcount = *reinterpret_cast<uint32_t*>(dataPtr);
-		dataPtr += 4;
-
-		assert(colour_vcount == mesh.getNumVerts());
-
-		load_colour(dataPtr, mesh);
-	}
 	else {
 		assert(false);
-		return 3;
+		return 2;
 	}
 
 	return 0;
@@ -346,6 +346,46 @@ static void load_uv2(const char* buf, Mesh& mesh)
 		tvFace[i].t[2] = mesh.faces[i].v[2];
 	}
 }
+
+
+static void load_colour(const char*, Mesh&);
+
+int BWModel::pre_load_colour(BWPrimitives& prim, const std::string& colour_name)
+{
+	std::vector<char> streamBuf;
+	if (prim.openSection(colour_name, streamBuf)) {
+		return 1;
+	}
+
+	Mesh& mesh = *meshPtr;
+
+	char *dataPtr = streamBuf.data();
+	std::string streamType(dataPtr, strnlen(dataPtr, 64));
+	dataPtr += 64;
+
+	bool flgNewFormat = boost::starts_with(streamType, "BPVS");
+	if (flgNewFormat) {
+		streamType.erase(0, 4);
+		dataPtr += 4;
+		dataPtr += 64;
+	}
+
+	if (streamType == "colour") {
+		uint32_t colour_vcount = *reinterpret_cast<uint32_t*>(dataPtr);
+		dataPtr += 4;
+
+		assert(colour_vcount == mesh.getNumVerts());
+
+		load_colour(dataPtr, mesh);
+	}
+	else {
+		assert(false);
+		return 2;
+	}
+
+	return 0;
+}
+
 
 
 #pragma pack(push, 1)

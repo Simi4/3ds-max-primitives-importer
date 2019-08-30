@@ -21,7 +21,8 @@ class BWModel {
 	int pre_load_vertices(BWPrimitives&, const std::string&);
 	template <class T> void load_vertices(const char*);
 
-	int pre_load_stream(RenderSetPtr, BWPrimitives&);
+	int pre_load_uv2(BWPrimitives&, const std::string&);
+	int pre_load_colour(BWPrimitives&, const std::string&);
 
 	int pre_load_indices(RenderSetPtr, BWPrimitives&);
 	template <typename T> void load_indices(RenderSetPtr, const char*, uint32_t, uint32_t);
